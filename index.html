@@ -3,94 +3,321 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1020">
+  <meta name="theme-color" content="#10111b">
+  <meta
+    name="description"
+    content="Swap tokens on the TON network with Vireza Swap."
+  >
   <title>Vireza Swap</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      padding: 24px 16px;
-      background: #0b1020;
-      color: #eef4ff;
-      font-family: system-ui, sans-serif;
-    }
-    main { max-width: 460px; margin: 32px auto; }
-    h1 { margin-bottom: 6px; }
-    p { color: #a3b3cd; line-height: 1.6; }
-    .card {
-      background: #172137;
-      padding: 22px;
-      border: 1px solid #ffffff18;
-      border-radius: 22px;
-    }
-    label { display: block; margin: 20px 0 8px; }
-    input, button {
-      width: 100%;
-      padding: 14px;
-      border-radius: 12px;
-      font: inherit;
-    }
-    input {
-      color: white;
-      background: #0b1426;
-      border: 1px solid #ffffff30;
-    }
-    button {
-      margin-top: 14px;
-      background: #8bdcff;
-      border: 0;
-      color: #081321;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    #wallet { margin-bottom: 20px; }
-    #quote { white-space: pre-line; line-height: 1.8; }
-    #status { overflow-wrap: anywhere; }
-    small { color: #a3b3cd; }
-    pre {
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      font-size: 12px;
-    }
-  </style>
+  <link rel="stylesheet" href="./src/styles.css">
 </head>
+
 <body>
-  <main>
-    <h1>Vireza Swap</h1>
-    <p>GRAM → USDT · TON mainnet</p>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Vireza Swap home">
+      <span class="brand-mark" aria-hidden="true">V</span>
+      <span>Vireza<span class="brand-light">Swap</span></span>
+    </a>
 
-    <section class="card">
-      <div id="wallet"></div>
+    <div class="header-actions">
+      <span class="network-badge">
+        <span class="network-dot" aria-hidden="true"></span>
+        TON Mainnet
+      </span>
 
-      <label for="amount">GRAM amount</label>
-      <input
-        id="amount"
-        inputmode="decimal"
-        autocomplete="off"
-        placeholder="Example: 0.5"
-      >
+      <!-- TON Connect will render its button here. -->
+      <div id="wallet-connect">
+        <button class="button button-secondary" disabled>
+          Connect Wallet
+        </button>
+      </div>
+    </div>
+  </header>
 
-      <p><small>Slippage tolerance: 0.5%</small></p>
-
-      <button id="estimate" type="button">Get quote</button>
-      <p id="quote" aria-live="polite"></p>
-
-      <button id="swap" type="button" disabled>
-        Swap
-      </button>
-
-      <p id="status" role="status">
-        Connect your wallet, then get a quote.
-      </p>
-
-      <button id="check" type="button" hidden>
-        Check transaction
-      </button>
-      <pre id="records"></pre>
+  <main class="main">
+    <section class="intro" aria-labelledby="page-title">
+      <span class="eyebrow">BUILT FOR TON</span>
+      <h1 id="page-title">Your tokens. Your next move.</h1>
+      <p>Choose a pair and swap on the TON network.</p>
     </section>
+
+    <section class="swap-card" aria-labelledby="swap-title">
+      <div class="card-header">
+        <div>
+          <h2 id="swap-title">Swap</h2>
+          <p>Trade TON network tokens</p>
+        </div>
+
+        <button
+          id="settings-open"
+          class="icon-button"
+          type="button"
+          aria-label="Open swap settings"
+          aria-haspopup="dialog"
+          disabled
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <path d="M4 7h16M4 17h16"></path>
+            <circle cx="9" cy="7" r="3" fill="currentColor"></circle>
+            <circle cx="15" cy="17" r="3" fill="currentColor"></circle>
+          </svg>
+        </button>
+      </div>
+
+      <form id="swap-form">
+        <div class="token-panel">
+          <div class="panel-top">
+            <label for="pay-amount">You pay</label>
+            <span id="pay-balance">Balance: —</span>
+          </div>
+
+          <div class="amount-row">
+            <input
+              id="pay-amount"
+              class="amount-input"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="0.0"
+              aria-describedby="amount-help"
+              disabled
+            >
+
+            <button
+              id="pay-token-select"
+              class="token-selector"
+              type="button"
+              aria-label="Select the token to pay"
+              aria-haspopup="dialog"
+              disabled
+            >
+              <span class="token-avatar" aria-hidden="true">G</span>
+              <span id="pay-token-symbol">GRAM</span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+          </div>
+
+          <div class="panel-bottom">
+            <span id="pay-fiat">—</span>
+            <span id="pay-token-name">Gram</span>
+          </div>
+        </div>
+
+        <div class="reverse-row">
+          <button
+            id="reverse-pair"
+            class="reverse-button"
+            type="button"
+            aria-label="Reverse token pair"
+            disabled
+          >↓</button>
+        </div>
+
+        <div class="token-panel">
+          <div class="panel-top">
+            <label for="receive-amount">You receive</label>
+            <span id="receive-balance">Balance: —</span>
+          </div>
+
+          <div class="amount-row">
+            <input
+              id="receive-amount"
+              class="amount-input"
+              type="text"
+              placeholder="0.0"
+              aria-label="Estimated amount received"
+              readonly
+            >
+
+            <button
+              id="receive-token-select"
+              class="token-selector"
+              type="button"
+              aria-label="Select the token to receive"
+              aria-haspopup="dialog"
+              disabled
+            >
+              <span id="receive-token-symbol">Select token</span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+          </div>
+
+          <div class="panel-bottom">
+            <span id="receive-fiat">—</span>
+            <span id="receive-token-name">Estimated output</span>
+          </div>
+        </div>
+
+        <p id="amount-help" class="field-help">
+          Keep some GRAM available for network fees.
+        </p>
+
+        <div class="slippage-row">
+          <span>Slippage tolerance</span>
+          <button
+            id="slippage-open"
+            class="text-button"
+            type="button"
+            disabled
+          >
+            <span id="slippage-value">0.5%</span>
+          </button>
+        </div>
+
+        <button
+          id="quote-button"
+          class="button button-secondary button-full"
+          type="button"
+          disabled
+        >
+          Get quote
+        </button>
+
+        <button
+          id="swap-button"
+          class="button button-primary button-full"
+          type="submit"
+          disabled
+        >
+          Swap
+        </button>
+
+        <p id="swap-status" class="status" role="status">
+          Interface ready. Token and wallet integration is not connected yet.
+        </p>
+
+        <dl id="quote-details" class="quote-details" hidden>
+          <div>
+            <dt>Rate</dt>
+            <dd id="quote-rate">—</dd>
+          </div>
+          <div>
+            <dt>Minimum received</dt>
+            <dd id="quote-minimum">—</dd>
+          </div>
+          <div>
+            <dt>Price impact</dt>
+            <dd id="quote-price-impact">—</dd>
+          </div>
+          <div>
+            <dt>Route</dt>
+            <dd id="quote-route">—</dd>
+          </div>
+        </dl>
+      </form>
+
+      <section
+        id="transaction-panel"
+        class="transaction-panel"
+        aria-labelledby="transaction-title"
+        hidden
+      >
+        <h3 id="transaction-title">Transaction</h3>
+        <p id="transaction-status" role="status"></p>
+        <a
+          id="transaction-link"
+          target="_blank"
+          rel="noopener noreferrer"
+          hidden
+        >View transaction</a>
+        <button
+          id="transaction-check"
+          class="button button-secondary button-full"
+          type="button"
+          disabled
+        >Check status</button>
+      </section>
+    </section>
+
+    <p class="route-note">
+      Swaps require an available route and sufficient liquidity.
+    </p>
   </main>
 
-  <script type="module" src="/src/main.js"></script>
+  <footer class="site-footer">
+    <span>Vireza Swap</span>
+    <span>TON network · STON.fi integration</span>
+  </footer>
+
+  <!-- Token picker -->
+  <dialog id="token-dialog" aria-labelledby="token-dialog-title">
+    <div class="dialog-header">
+      <h2 id="token-dialog-title">Select a token</h2>
+      <form method="dialog">
+        <button class="icon-button" aria-label="Close token picker">
+          ×
+        </button>
+      </form>
+    </div>
+
+    <label class="sr-only" for="token-search">Search tokens</label>
+    <input
+      id="token-search"
+      class="search-input"
+      type="search"
+      placeholder="Search by name or symbol"
+      autocomplete="off"
+    >
+
+    <p id="token-list-status" class="field-help" role="status">
+      Tokens have not been loaded yet.
+    </p>
+
+    <!-- JavaScript will add token buttons here. -->
+    <div id="token-list" class="token-list"></div>
+  </dialog>
+
+  <!-- Swap settings -->
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <div class="dialog-header">
+      <h2 id="settings-title">Swap settings</h2>
+      <form method="dialog">
+        <button class="icon-button" aria-label="Close settings">
+          ×
+        </button>
+      </form>
+    </div>
+
+    <form id="settings-form">
+      <label class="settings-label" for="slippage-input">
+        Slippage tolerance (%)
+      </label>
+
+      <input
+        id="slippage-input"
+        class="search-input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        value="0.5"
+        aria-describedby="slippage-help settings-error"
+      >
+
+      <p id="slippage-help" class="field-help">
+        The maximum price change you accept while the swap executes.
+        A higher value allows a worse execution price.
+      </p>
+
+      <p id="settings-error" class="error-message" role="alert"></p>
+
+      <button
+        id="settings-save"
+        class="button button-primary button-full"
+        type="submit"
+        disabled
+      >Save settings</button>
+    </form>
+  </dialog>
+
+  <!-- JavaScript entry will be connected in the next stage. -->
 </body>
-</html>qq
+</html>
