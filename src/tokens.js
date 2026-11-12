@@ -5,26 +5,99 @@ import {
 } from "./config.js";
 
 const ASSETS_URL = "api.ston.fi";
+const REQUEST_TIMEOUT_MS = 20_000;
 
 let cachedTokens = null;
 let pendingRequest = null;
 
-// Normalize friendly and raw TON addresses for comparisons.
+// Normalize TON addresses for comparisons.
 export function tokenKey(address) {
-  return Address.parse(address).toRawString();
+  if (typeof address !== "string" || !address.trim()) {
+    throw new Error("Invalid token address.");
+  }
+
+  return Address.parse(address.trim()).toRawString();
 }
 
 export function sameToken(a, b) {
-  return Boolean(a && b && tokenKey(a.address) === tokenKey(b.address));
+  if (!a?.address || !b?.address) return false;
+
+  try {
+    return tokenKey(a.address) === tokenKey(b.address);
+  } catch {
+    return false;
+  }
 }
 
-function normalizeAsset(asset) {
-  if (!asset || typeof asset !== "object") return null;
+function copyTokens(tokens) {
+  return tokens.map((token) => ({ ...token }));
+}
 
-  const meta = asset.meta ?? {};
-  const address = asset.contract_address ?? asset.contractAddress;
+function readDecimals(value) {
+  if (
+    typeof value !== "number" &&
+    typeof value !== "string"
+  ) {
+    return null;
+  }
 
-  if (typeof address !== "string") return null;
+  const text = String(value).trim();
+
+  if (!/^\d+$/.test(text)) return null;
+
+  const decimals = Number(text);
+
+  if (
+    !Number.isInteger(decimals) ||
+    decimals < 0 ||
+    decimals > 255
+  ) {
+    return null;
+  }
+
+  return decimals;
+}
+
+function getNativeToken() {
+  if (!NATIVE_ASSET || typeof NATIVE_ASSET !== "object") {
+    throw new Error("Missing native asset configuration.");
+  }
+
+  const configuredKey = tokenKey(NATIVE_ASSET_ADDRESS);
+  const assetKey = tokenKey(NATIVE_ASSET.address);
+  const decimals = readDecimals(NATIVE_ASSET.decimals);
+
+  if (configuredKey !== assetKey || decimals === null) {
+    throw new Error("Invalid native asset configuration.");
+  }
+
+  return {
+    address: NATIVE_ASSET.address.trim(),
+    symbol: "GRAM",
+    name: "Gram",
+    decimals
+  };
+}
+
+function normalizeAsset(asset, nativeToken, nativeKey) {
+  if (!asset || typeof asset !== "object") {
+    return null;
+  }
+
+  // These checks do not establish whether a token is trustworthy.
+  if (
+    asset.blacklisted === true ||
+    asset.deprecated === true
+  ) {
+    return null;
+  }
+
+  const address =
+    asset.contract_address ?? asset.contractAddress;
+
+  if (typeof address !== "string") {
+    return null;
+  }
 
   let key;
 
@@ -34,127 +107,187 @@ function normalizeAsset(asset) {
     return null;
   }
 
-  if (key === tokenKey(NATIVE_ASSET_ADDRESS)) {
-    return { ...NATIVE_ASSET };
+  if (key === nativeKey) {
+    return { ...nativeToken };
   }
 
-  // Support metadata nested under meta or on the asset itself.
+  const meta =
+    asset.meta && typeof asset.meta === "object"
+      ? asset.meta
+      : {};
+
   const symbol = meta.symbol ?? asset.symbol;
-  const decimals = Number(meta.decimals ?? asset.decimals);
+  const decimals = readDecimals(
+    meta.decimals ?? asset.decimals
+  );
 
   if (
     typeof symbol !== "string" ||
     !symbol.trim() ||
-    !Number.isInteger(decimals) ||
-    decimals < 0 ||
-    decimals > 255
+    decimals === null
   ) {
     return null;
   }
 
-  // Do not offer explicitly blocked or deprecated assets.
-  if (asset.blacklisted === true || asset.deprecated === true) {
-    return null;
-  }
-
-  const name =
+  const rawName =
     meta.display_name ??
     meta.displayName ??
     meta.name ??
     asset.display_name ??
     asset.displayName ??
+    asset.name ??
     symbol;
 
+  const name =
+    typeof rawName === "string" && rawName.trim()
+      ? rawName.trim()
+      : symbol.trim();
+
   return {
-    address,
+    address: address.trim(),
     symbol: symbol.trim(),
-    name: typeof name === "string" ? name : symbol,
+    name,
     decimals
   };
 }
 
 async function requestTokens() {
+  const nativeToken = getNativeToken();
+  const nativeKey = tokenKey(nativeToken.address);
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(ASSETS_URL, {
+      method: "GET",
       signal: controller.signal,
-      headers: { Accept: "application/json" }
+      headers: {
+        Accept: "application/json"
+      }
     });
 
     if (!response.ok) {
-      throw new Error(`Asset request failed: ${response.status}`);
+      throw new Error(
+        `Could not load tokens (HTTP ${response.status}).`
+      );
     }
 
     const body = await response.json();
-    const rows = Array.isArray(body) ? body : body?.asset_list;
+
+    const rows = Array.isArray(body)
+      ? body
+      : body?.asset_list;
 
     if (!Array.isArray(rows)) {
-      throw new Error("Unsupported asset response.");
+      throw new Error("Unsupported token API response.");
     }
 
     const unique = new Map([
-      [tokenKey(NATIVE_ASSET.address), { ...NATIVE_ASSET }]
+      [nativeKey, nativeToken]
     ]);
 
     for (const row of rows) {
-      const token = normalizeAsset(row);
+      const token = normalizeAsset(
+        row,
+        nativeToken,
+        nativeKey
+      );
 
-      if (token) {
-        unique.set(tokenKey(token.address), token);
+      if (!token) continue;
+
+      const key = tokenKey(token.address);
+
+      if (!unique.has(key)) {
+        unique.set(key, token);
       }
     }
 
-    const nativeKey = tokenKey(NATIVE_ASSET.address);
+    const otherTokens = [...unique.entries()]
+      .filter(([key]) => key !== nativeKey)
+      .map(([, token]) => token)
+      .sort((a, b) => {
+        return (
+          a.symbol.localeCompare(b.symbol) ||
+          a.name.localeCompare(b.name) ||
+          a.address.localeCompare(b.address)
+        );
+      });
 
-    return [...unique.values()].sort((a, b) => {
-      if (tokenKey(a.address) === nativeKey) return -1;
-      if (tokenKey(b.address) === nativeKey) return 1;
-
-      return (
-        a.symbol.localeCompare(b.symbol) ||
-        a.address.localeCompare(b.address)
+    return [nativeToken, ...otherTokens];
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(
+        "Token request timed out. Reload the page to retry.",
+        { cause: error }
       );
-    });
+    }
+
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
 }
 
 export async function loadTokens({ refresh = false } = {}) {
-  if (cachedTokens && !refresh) return [...cachedTokens];
-
-  if (!pendingRequest) {
-    pendingRequest = requestTokens()
-      .then((tokens) => {
-        cachedTokens = tokens;
-        return tokens;
-      })
-      .finally(() => {
-        pendingRequest = null;
-      });
+  // Share an in-progress request instead of starting duplicates.
+  if (pendingRequest) {
+    return copyTokens(await pendingRequest);
   }
 
-  return [...await pendingRequest];
+  if (cachedTokens && !refresh) {
+    return copyTokens(cachedTokens);
+  }
+
+  pendingRequest = requestTokens()
+    .then((tokens) => {
+      cachedTokens = copyTokens(tokens);
+      return cachedTokens;
+    })
+    .finally(() => {
+      pendingRequest = null;
+    });
+
+  return copyTokens(await pendingRequest);
 }
 
 export function searchTokens(tokens, query = "") {
-  const text = query.trim();
+  if (!Array.isArray(tokens)) return [];
 
-  if (!text) return tokens;
+  const text = String(query ?? "").trim();
 
-  // Match pasted addresses even when their representation differs.
+  if (!text) return [...tokens];
+
+  // A complete address can match either raw or friendly form.
   try {
     const key = tokenKey(text);
-    return tokens.filter((token) => tokenKey(token.address) === key);
-  } catch {
-    const needle = text.toLowerCase();
 
-    return tokens.filter((token) =>
-      `${token.symbol} ${token.name} ${token.address}`
-        .toLowerCase()
-        .includes(needle)
-    );
+    return tokens.filter((token) => {
+      try {
+        return tokenKey(token.address) === key;
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    // Not a complete address: search names, symbols and text.
   }
+
+  const needle = text.toLowerCase();
+
+  return tokens.filter((token) => {
+    const searchable = [
+      token.symbol,
+      token.name,
+      token.address
+    ]
+      .filter((value) => typeof value === "string")
+      .join(" ")
+      .toLowerCase();
+
+    return searchable.includes(needle);
+  });
 }
