@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080c16">
+  <title>NOVA Swap</title>
+
+  <script src="unpkg.com"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #080c16;
+      color: #eef4ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 20% 0%, #19457955, transparent 50%),
+        radial-gradient(ellipse at 100% 60%, #36216a30, transparent 50%),
+        #080c16;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid #7dcaff;
+      outline-offset: 4px;
+    }
+
+    .page { max-width: 960px; margin: auto; padding: 24px 18px; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 13px;
+      color: #081323;
+      background: linear-gradient(135deg, #98eeff, #5b95ff);
+    }
+
+    .brand span { color: #8fa5c4; font-weight: 400; }
+
+    .badge {
+      padding: 8px 12px;
+      border: 1px solid #ffffff15;
+      border-radius: 30px;
+      font-size: 11px;
+      color: #a4dbff;
+      background: #ffffff05;
+    }
+
+    main { max-width: 440px; margin: 54px auto 0; }
+    .hero { text-align: center; margin-bottom: 28px; }
+
+    .eyebrow {
+      color: #76c6ff;
+      font-size: 10px;
+      letter-spacing: 3px;
+    }
+
+    h1 {
+      margin: 16px 0;
+      font-size: clamp(32px, 9vw, 42px);
+      line-height: 1.12;
+      letter-spacing: -2px;
+    }
+
+    h1 span {
+      background: linear-gradient(100deg, #8eeaff, #9b9dff);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .hero p {
+      color: #93a3bc;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .card {
+      padding: 22px;
+      border: 1px solid #ffffff16;
+      border-radius: 26px;
+      background: linear-gradient(145deg, #172338e8, #101725f5);
+      box-shadow: 0 25px 70px #0005;
+    }
+
+    .heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    h2 { font-size: 21px; margin: 0 0 5px; }
+    .muted { color: #8a9cb8; font-size: 12px; }
+
+    .preview {
+      padding: 6px 9px;
+      font-size: 9px;
+      color: #a9caff;
+      border-radius: 7px;
+      background: #6e9eff15;
+      letter-spacing: 1px;
+    }
+
+    .panel {
+      padding: 18px;
+      background: #080e1b99;
+      border: 1px solid #ffffff08;
+      border-radius: 18px;
+    }
+
+    .label { font-size: 12px; color: #93a4bf; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 16px 0 12px;
+    }
+
+    #amount, .output {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      color: #eef4ff;
+      font-size: 32px;
+    }
+
+    #amount::placeholder, .output { color: #53647e; }
+
+    .token {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .coin {
+      width: 29px;
+      height: 29px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #218ee6;
+    }
+
+    .coin.usdt { background: #229c7d; }
+    .sub { font-size: 10px; color: #7285a2; }
+
+    .switch-wrap {
+      height: 10px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+
+    #reverse {
+      position: absolute;
+      top: -14px;
+      width: 38px;
+      height: 38px;
+      border: 4px solid #152034;
+      border-radius: 13px;
+      background: #2b4161;
+      color: #a6d5ff;
+      font-size: 19px;
+    }
+
+    .details { display: grid; gap: 12px; margin: 22px 2px; }
+
+    .detail {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+      color: #8a9cb8;
+    }
+
+    .detail strong { font-weight: 500; color: #c2d0e5; }
+
+    #connect { display: flex; justify-content: center; margin-top: 18px; }
+
+    .primary {
+      width: 100%;
+      padding: 14px;
+      border: 0;
+      border-radius: 13px;
+      background: linear-gradient(100deg, #67d6ff, #719aff);
+      color: #081323;
+      font-weight: 700;
+    }
+
+    #swap { margin-top: 14px; }
+
+    .notice {
+      margin: 15px 0 0;
+      color: #90a2bd;
+      font-size: 11px;
+      line-height: 1.7;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    details {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #ffffff0e;
+    }
+
+    summary { color: #a9bad3; font-size: 12px; cursor: pointer; }
+
+    .config-label {
+      display: block;
+      font-size: 11px;
+      color: #9bacc5;
+      margin: 16px 0 8px;
+    }
+
+    #manifest {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ffffff1a;
+      border-radius: 10px;
+      background: #080e1b;
+      color: #e4edff;
+      font-size: 12px;
+    }
+
+    #activate { margin-top: 12px; font-size: 12px; }
+
+    .features {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 25px 8px;
+      color: #8b9db8;
+      font-size: 10px;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 10px;
+      color: #576b88;
+      padding: 24px 0;
+    }
+
+    @media (max-width: 360px) {
+      .card { padding: 16px; }
+      main { margin-top: 38px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <div class="logo">N</div>
+        <div>NOVA<span>swap</span></div>
+      </div>
+      <div class="badge">TON Network</div>
+    </header>
+
+    <main>
+      <div class="hero">
+        <div class="eyebrow">YOUR WALLET. YOUR CONTROL.</div>
+        <h1>Swap lebih simpel.<br><span>Mulai dari sini.</span></h1>
+        <p>Antarmuka pertukaran token untuk jaringan TON.</p>
+      </div>
+
+      <section class="card">
+        <div class="heading">
+          <div>
+            <h2>Swap</h2>
+            <div class="muted">Pilih token yang ingin ditukar</div>
+          </div>
+          <span class="preview">PROTOTIPE</span>
+        </div>
+
+        <div class="panel">
+          <label class="label" for="amount">Kamu bayar</label>
+          <div class="row">
+            <input
+              id="amount"
+              inputmode="decimal"
+              placeholder="0.00"
+              autocomplete="off"
+              aria-label="Jumlah token yang dibayar"
+            >
+            <div class="token">
+              <span id="fromIcon" class="coin">G</span>
+              <span id="fromToken">GRAM</span>
+            </div>
+          </div>
+          <div class="sub">Saldo belum dimuat</div>
+        </div>
+
+        <div class="switch-wrap">
+          <button id="reverse" aria-label="Balik arah pertukaran">⇅</button>
+        </div>
+
+        <div class="panel">
+          <span class="label">Kamu terima</span>
+          <div class="row">
+            <div class="output">—</div>
+            <div class="token">
+              <span id="toIcon" class="coin usdt">$</span>
+              <span id="toToken">USDT</span>
+            </div>
+          </div>
+          <div class="sub">Menunggu integrasi API exchange</div>
+        </div>
+
+        <div class="details">
+          <div class="detail">
+            <span>Jaringan</span><strong>TON</strong>
+          </div>
+          <div class="detail">
+            <span>Kurs & biaya</span><strong>Belum tersedia</strong>
+          </div>
+          <div class="detail">
+            <span>Wallet</span><strong id="walletStatus">Belum terhubung</strong>
+          </div>
+        </div>
+
+        <div id="connect"></div>
+        <button id="swap" class="primary" disabled>
+          Swap belum diaktifkan
+        </button>
+
+        <p id="message" class="notice" role="status" aria-live="polite">
+          Buka pengaturan di bawah untuk mengaktifkan koneksi wallet.
+        </p>
+
+        <details open>
+          <summary>Pengaturan koneksi wallet</summary>
+          <label class="config-label" for="manifest">
+            URL manifest TON Connect milik web kamu
+          </label>
+          <input
+            id="manifest"
+            type="url"
+            placeholder="URL HTTPS tonconnect-manifest.json"
+          >
+          <button id="activate" class="primary">
+            Aktifkan koneksi wallet
+          </button>
+          <p class="notice">
+            Manifest harus tersedia secara publik tanpa login,
+            dengan url, name, dan iconUrl yang benar.
+          </p>
+        </details>
+      </section>
+
+      <div class="features">
+        <span>Wallet pribadi</span>
+        <span>Desain mobile</span>
+        <span>Jaringan TON</span>
+      </div>
+    </main>
+
+    <footer>NOVA Swap · Prototipe · API swap belum terpasang</footer>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    let reversed = false;
+    let tonConnectUI = null;
+
+    el("amount").addEventListener("input", function () {
+      const normalized = this.value.replace(/,/g, ".");
+      const parts = normalized.replace(/[^\d.]/g, "").split(".");
+      this.value = parts.shift() +
+        (parts.length ? "." + parts.join("") : "");
+    });
+
+    el("reverse").addEventListener("click", () => {
+      reversed = !reversed;
+      const from = reversed ? "USDT" : "GRAM";
+      const to = reversed ? "GRAM" : "USDT";
+
+      el("fromToken").textContent = from;
+      el("toToken").textContent = to;
+      el("fromIcon").textContent = reversed ? "$" : "G";
+      el("toIcon").textContent = reversed ? "G" : "$";
+      el("fromIcon").className = reversed ? "coin usdt" : "coin";
+      el("toIcon").className = reversed ? "coin" : "coin usdt";
+      el("amount").value = "";
+    });
+
+    el("activate").addEventListener("click", async () => {
+      if (tonConnectUI) return;
+
+      let manifestUrl;
+
+      try {
+        manifestUrl = new URL(el("manifest").value.trim());
+        if (manifestUrl.protocol !== "https:") {
+          throw new Error("HTTPS diperlukan");
+        }
+      } catch {
+        el("message").textContent =
+          "Masukkan URL manifest lengkap yang dimulai dengan HTTPS.";
+        return;
+      }
+
+      if (!window.TON_CONNECT_UI) {
+        el("message").textContent =
+          "Komponen wallet gagal dimuat. Periksa internet lalu muat ulang.";
+        return;
+      }
+
+      el("activate").disabled = true;
+
+      try {
+        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+          manifestUrl: manifestUrl.href,
+          buttonRootId: "connect",
+          uiPreferences: {
+            theme: TON_CONNECT_UI.THEME.DARK
+          }
+        });
+
+        tonConnectUI.onStatusChange(
+          (wallet) => {
+            el("walletStatus").textContent =
+              wallet ? "Terhubung" : "Belum terhubung";
+
+            el("message").textContent = wallet
+              ? "Wallet terhubung. Swap belum aktif karena API belum dipasang."
+              : "Tekan tombol koneksi untuk memilih wallet.";
+          },
+          () => {
+            el("message").textContent =
+              "Koneksi bermasalah. Periksa URL manifest dan coba lagi.";
+          }
+        );
+
+        el("manifest").disabled = true;
+        el("activate").textContent = "Koneksi wallet siap";
+        el("message").textContent =
+          "Tekan tombol koneksi untuk memilih wallet.";
+
+        await tonConnectUI.connectionRestored;
+      } catch {
+        el("message").textContent =
+          "Koneksi belum berhasil. Periksa manifest lalu muat ulang halaman.";
+
+        if (!tonConnectUI) {
+          el("activate").disabled = false;
+        }
+      }
+    });
+  </script>
+</body>
+            </html>
