@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,16 +14,16 @@
       color: #eef4ff;
       font-family: system-ui, sans-serif;
     }
-    main { max-width: 430px; margin: 40px auto; }
-    h1 { margin-bottom: 8px; }
+    main { max-width: 460px; margin: 32px auto; }
+    h1 { margin-bottom: 6px; }
     p { color: #a3b3cd; line-height: 1.6; }
     .card {
-      padding: 22px;
       background: #172137;
-      border: 1px solid #ffffff16;
+      padding: 22px;
+      border: 1px solid #ffffff18;
       border-radius: 22px;
     }
-    label { display: block; margin: 20px 0 10px; }
+    label { display: block; margin: 20px 0 8px; }
     input, button {
       width: 100%;
       padding: 14px;
@@ -31,233 +31,66 @@
       font: inherit;
     }
     input {
-      background: #0b1426;
       color: white;
-      border: 1px solid #ffffff25;
+      background: #0b1426;
+      border: 1px solid #ffffff30;
     }
     button {
-      margin-top: 16px;
+      margin-top: 14px;
       background: #8bdcff;
       border: 0;
       color: #081321;
       font-weight: 700;
       cursor: pointer;
     }
-    button:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
-    #wallet { margin: 20px 0; }
-    #result {
-      display: grid;
-      gap: 12px;
-      margin: 22px 0;
-    }
-    #result div {
-      display: flex;
-      justify-content: space-between;
-      gap: 14px;
-    }
-    #result span { color: #a3b3cd; }
-    #status {
-      font-size: 13px;
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    #wallet { margin-bottom: 20px; }
+    #quote { white-space: pre-line; line-height: 1.8; }
+    #status { overflow-wrap: anywhere; }
+    small { color: #a3b3cd; }
+    pre {
+      white-space: pre-wrap;
       overflow-wrap: anywhere;
+      font-size: 12px;
     }
-    .small { font-size: 12px; }
   </style>
 </head>
 <body>
   <main>
     <h1>Vireza Swap</h1>
-    <p>GRAM → USDT · Jaringan TON</p>
+    <p>GRAM → USDT · TON mainnet</p>
 
     <section class="card">
       <div id="wallet"></div>
 
-      <form id="quoteForm">
-        <label for="amount">Jumlah GRAM</label>
-        <input
-          id="amount"
-          inputmode="decimal"
-          placeholder="Masukkan jumlah"
-          autocomplete="off"
-          required
-        >
+      <label for="amount">GRAM amount</label>
+      <input
+        id="amount"
+        inputmode="decimal"
+        autocomplete="off"
+        placeholder="Example: 0.5"
+      >
 
-        <button id="quoteButton" type="submit">
-          Ambil estimasi STON.fi
-        </button>
-      </form>
+      <p><small>Slippage tolerance: 0.5%</small></p>
 
-      <div id="result" aria-live="polite"></div>
+      <button id="estimate" type="button">Get quote</button>
+      <p id="quote" aria-live="polite"></p>
 
-      <button type="button" disabled>
-        Transaksi swap belum dipasang
+      <button id="swap" type="button" disabled>
+        Swap
       </button>
 
       <p id="status" role="status">
-        Estimasi diambil dari API. Halaman ini belum mengirim transaksi.
+        Connect your wallet, then get a quote.
       </p>
 
-      <p class="small">
-        Batas perubahan harga: 0.5%.
-        Estimasi bukan bukti transaksi berhasil.
-      </p>
+      <button id="check" type="button" hidden>
+        Check transaction
+      </button>
+      <pre id="records"></pre>
     </section>
   </main>
 
-  <script type="module">
-    import { StonApiClient } from "@ston-fi/api";
-    import { TonConnectUI } from "@tonconnect/ui";
-
-    const api = new StonApiClient();
-
-    // Identitas aset native untuk API STON.fi.
-    // API masih memakai nama TON untuk aset native ini.
-    const NATIVE_ASSET =
-      "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c";
-
-    // Alamat master USDT di jaringan TON.
-    const USDT =
-      "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs";
-
-    const byId = (id) => document.getElementById(id);
-    let busy = false;
-
-    function toUnits(text, decimals) {
-      const value = text.trim().replace(",", ".");
-
-      if (!/^\d+(\.\d+)?$/.test(value)) {
-        throw new Error("Masukkan jumlah positif, misalnya 1 atau 0.5.");
-      }
-
-      const [whole, fraction = ""] = value.split(".");
-
-      if (fraction.length > decimals) {
-        throw new Error(
-          `Jumlah maksimal memakai ${decimals} angka desimal.`
-        );
-      }
-
-      const units =
-        BigInt(whole) * (10n ** BigInt(decimals)) +
-        BigInt(fraction.padEnd(decimals, "0"));
-
-      if (units <= 0n) {
-        throw new Error("Jumlah harus lebih besar dari nol.");
-      }
-
-      return units.toString();
-    }
-
-    function fromUnits(value, decimals) {
-      const units = BigInt(value);
-      const scale = 10n ** BigInt(decimals);
-      const whole = units / scale;
-      const fraction = (units % scale)
-        .toString()
-        .padStart(decimals, "0")
-        .replace(/0+$/, "");
-
-      return whole.toString() + (fraction ? "." + fraction : "");
-    }
-
-    function addResult(label, value) {
-      const row = document.createElement("div");
-      const name = document.createElement("span");
-      const content = document.createElement("strong");
-
-      name.textContent = label;
-      content.textContent = value;
-
-      row.append(name, content);
-      byId("result").append(row);
-    }
-
-    try {
-      const walletUI = new TonConnectUI({
-        manifestUrl:
-          "virezaswap.github.io",
-        buttonRootId: "wallet"
-      });
-
-      walletUI.onStatusChange(
-        (wallet) => {
-          if (wallet && String(wallet.account.chain) !== "-239") {
-            byId("status").textContent =
-              "Wallet bukan mainnet. Estimasi di halaman ini memakai mainnet TON.";
-          }
-        },
-        () => {
-          byId("status").textContent =
-            "Koneksi wallet bermasalah. Periksa manifest dan ikon.";
-        }
-      );
-    } catch (error) {
-      console.error(error);
-      byId("status").textContent =
-        "Tombol wallet gagal disiapkan. Estimasi tetap bisa dicoba.";
-    }
-
-    byId("amount").addEventListener("input", () => {
-      byId("result").replaceChildren();
-    });
-
-    byId("quoteForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (busy) return;
-
-      byId("result").replaceChildren();
-
-      try {
-        const offerUnits = toUnits(byId("amount").value, 9);
-
-        busy = true;
-        byId("quoteButton").disabled = true;
-        byId("status").textContent = "Mengambil estimasi dari STON.fi…";
-
-        const quote = await api.simulateSwap({
-          offerAddress: NATIVE_ASSET,
-          offerUnits,
-          askAddress: USDT,
-          slippageTolerance: "0.005"
-        });
-
-        if (
-          quote.askUnits == null ||
-          quote.minAskUnits == null
-        ) {
-          throw new Error("API tidak memberikan estimasi yang lengkap.");
-        }
-
-        addResult(
-          "Kamu bayar",
-          `${fromUnits(offerUnits, 9)} GRAM`
-        );
-
-        addResult(
-          "Estimasi diterima",
-          `${fromUnits(quote.askUnits, 6)} USDT`
-        );
-
-        addResult(
-          "Minimum sesuai simulasi",
-          `${fromUnits(quote.minAskUnits, 6)} USDT`
-        );
-
-        byId("status").textContent =
-          "Estimasi diterima. Biaya jaringan belum ditampilkan. " +
-          "Belum ada transaksi yang dikirim.";
-      } catch (error) {
-        console.error(error);
-        byId("status").textContent =
-          "Estimasi gagal: " +
-          (error instanceof Error ? error.message : "Coba lagi.");
-      } finally {
-        busy = false;
-        byId("quoteButton").disabled = false;
-      }
-    });
-  </script>
+  <script type="module" src="/src/main.js"></script>
 </body>
-</html>
+</html>qq
