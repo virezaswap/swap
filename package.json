@@ -4,12 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build --base=/swap/"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@ston-fi/api": "latest",
-    "@tonconnect/ui": "latest"
+    "@ston-fi/api": "^0.32.0",
+    "@ston-fi/sdk": "^2.7.0",
+    "@ton/ton": "^16.0.0",
+    "@ton/core": "^0.62.0",
+    "@ton/crypto": "^3.3.0",
+    "@tonconnect/ui": "^2.0.9",
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
     "vite": "^6.0.0"
